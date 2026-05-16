@@ -238,7 +238,7 @@ def get_ranges_from_wod(latitude: float, longitude: float) -> pd.DataFrame:
         }
 
     df = df.rename(columns=rename_map)
-    df = df[df['time','TEMP']]
+    df = df[['time', 'TEMP']]
 
     return df
 
