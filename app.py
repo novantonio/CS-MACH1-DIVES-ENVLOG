@@ -43,6 +43,7 @@ apply_cs_mach1_theme(
 
 DEFAULT_LATITUDE  = 44.376290
 DEFAULT_LONGITUDE = 9.071358
+TMAX = 32
 
 CORA_URL_TEMPLATE = (
     "https://erddap.emodnet-physics.eu/erddap/griddap/"
@@ -235,6 +236,7 @@ def plot_series_and_doy(
     ax1.legend(fontsize=8)
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Temperature (°C)")
+    ax1.set_ylim(top=TMAX)
     ax1.set_title(f"Time Series — {label} ({yr})")
     ax1.grid(True, alpha=0.3)
     ax1.tick_params(axis="x", rotation=25)
@@ -252,13 +254,13 @@ def plot_series_and_doy(
     )
     ax2.plot(
         m_month, t_mean,
-        marker=marker, markersize=18, linestyle="None",
+        marker=marker, markersize=12, linestyle="None",
         color="crimson", markeredgecolor="black", markeredgewidth=0.8,
         zorder=5, label=f"{label} mean {t_mean:.2f} °C",
     )
     ax2.plot(
         m_month, t_med,
-        marker=marker, markersize=18, linestyle="None",
+        marker=marker, markersize=12, linestyle="None",
         color="darkorange", markeredgecolor="black", markeredgewidth=0.8,
         zorder=5, label=f"{label} median {t_med:.2f} °C",
     )
@@ -270,6 +272,7 @@ def plot_series_and_doy(
     ax2.set_xticklabels(MONTH_LABELS, fontsize=8)
     ax2.set_xlabel("Month")
     ax2.set_ylabel("Temperature [°C]")
+    ax2.set_ylim(top=TMAX)
     ax2.set_title("CORA Monthly Mean ± Std vs Logger")
     ax2.legend(fontsize=8)
     ax2.grid(True, alpha=0.3)
@@ -360,7 +363,7 @@ def plot_doy_all(
         # Mean — filled
         ax.plot(
             d, t_mean,
-            marker=marker, markersize=18, linestyle="None",
+            marker=marker, markersize=12, linestyle="None",
             color=sc, markeredgecolor="black", markeredgewidth=0.8,
             label=f"{label} ({yr}) mean",
         )
@@ -368,7 +371,7 @@ def plot_doy_all(
         # Median — open, same colour edge
         ax.plot(
             d, t_med,
-            marker=marker, markersize=8, linestyle="None",
+            marker=marker, markersize=12, linestyle="None",
             color="white", markeredgecolor=sc, markeredgewidth=2,
             label=f"{label} ({yr}) median",
         )
@@ -379,6 +382,7 @@ def plot_doy_all(
 
     ax.set_xlabel("Day of Year")
     ax.set_ylabel("Temperature [°C]")
+    ax.set_ylim(top=TMAX)
     ax.set_title(
         f"Interannual Temperature Variability at ({latitude:.2f}, {longitude:.2f})\n"
         "— All loggers — filled = mean  ·  open = median —"
@@ -452,7 +456,7 @@ def plot_doy_all_mean(
               month,
               tavg,
               marker=marker,
-              markersize=8,
+              markersize=12,
               linestyle="None",
               color=sc,
               markeredgecolor="black",
@@ -464,7 +468,7 @@ def plot_doy_all_mean(
               month,
               tavg2,
               marker=marker,
-              markersize=8,
+              markersize=12,
               linestyle="None",
               color=sc,
               markeredgecolor="black",
@@ -483,6 +487,7 @@ def plot_doy_all_mean(
 
     ax.set_xlabel("Month")
     ax.set_ylabel("Temperature [°C]")
+    ax.set_ylim(top=TMAX)
 
     ax.set_title(
         "CORA vs Multiple Logger Monthly Temperature"
