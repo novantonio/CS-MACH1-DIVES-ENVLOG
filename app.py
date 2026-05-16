@@ -170,91 +170,109 @@ def fetch_cora_data(latitude: float, longitude: float) -> pd.DataFrame | None:
 
 # ── Plot helpers ──────────────────────────────────────────────────────────────
 
-def plot_temperature_series(df: pd.DataFrame) -> plt.Figure:
-    """Plot 1 – raw temperature time-series + rolling mean."""
-    fig, ax = plt.subplots(figsize=(12, 5))
-
-    ax.plot(
-        df["time"], df["temperature"],
-        alpha=0.4, linewidth=0.8,
-        color="steelblue", label="Raw temperature",
-    )
-
-    if "temperature_rolling_mean" in df.columns:
-        ax.plot(
-            df["time"], df["temperature_rolling_mean"],
-            linewidth=2, color="tomato", label="Rolling mean",
-        )
-        ax.legend()
-
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Temperature °C")
-    ax.set_title("Temperature Time Series")
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    return fig
-
-
-def plot_doy_single(
-    cora_df: pd.DataFrame,
+def plot_series_and_doy(
     sdata: pd.DataFrame,
+    cora_df: pd.DataFrame,
     latitude: float,
     longitude: float,
 ) -> plt.Figure:
     """
-    Plot 2 (per-file) – CORA interannual DOY scatter +
-    TWO markers for this logger: mean (filled, crimson) and median (open, navy).
-    A dotted vertical segment connects the two.
-    """
-    fig, ax = plt.subplots(figsize=(12, 5))
+    Combined 1-row × 2-column figure per logger file:
+      Left  (ax1) – Temperature time-series (raw + rolling mean)
+      Right (ax2) – CORA interannual DOY scatter + mean & median markers
+                    (no legend on ax2; markers annotated directly)
 
+    Mean marker  : crimson  (filled)
+    Median marker: darkorange (filled)
+    """
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2,
+        figsize=(18, 5),
+        gridspec_kw={"width_ratios": [1, 1.4]},
+    )
+
+    label  = sdata["custom_name"].iloc[0]
+    yr     = sdata["time"].iloc[0].year
+
+    # ── LEFT: time-series ─────────────────────────────────────────────────────
+    ax1.plot(
+        sdata["time"], sdata["temperature"],
+        alpha=0.4, linewidth=0.8,
+        color="steelblue", label="Raw temperature",
+    )
+    if "temperature_rolling_mean" in sdata.columns:
+        ax1.plot(
+            sdata["time"], sdata["temperature_rolling_mean"],
+            linewidth=2, color="tomato", label="Rolling mean",
+        )
+        ax1.legend(fontsize=8)
+
+    ax1.set_xlabel("Time")
+    ax1.set_ylabel("Temperature (°C)")
+    ax1.set_title(f"Time Series — {label} ({yr})")
+    ax1.grid(True, alpha=0.3)
+    ax1.tick_params(axis="x", rotation=25)
+
+    # ── RIGHT: DOY vs CORA ────────────────────────────────────────────────────
     years   = sorted(cora_df["time"].dt.year.unique())
     colours = cm.tab20(np.linspace(0, 1, len(years)))
 
     for colour, (year, year_data) in zip(colours, cora_df.groupby(cora_df["time"].dt.year)):
         doy = year_data["time"].dt.dayofyear
-        ax.plot(doy, year_data["TEMP"],
-                marker=".", markersize=4, linestyle="--",
-                color=colour, alpha=0.6, label=str(year))
+        ax2.plot(doy, year_data["TEMP"],
+                 marker=".", markersize=4, linestyle="--",
+                 color=colour, alpha=0.6)
 
-    # ── Logger markers ────────────────────────────────────────────────────────
     d      = sdata["time"].iloc[0].timetuple().tm_yday
     t_mean = sdata["temperature"].mean()
     t_med  = sdata["temperature"].median()
-    label  = sdata["custom_name"].iloc[0]
-    yr     = sdata["time"].iloc[0].year
     marker = _year_marker(yr)
 
-    # Mean — filled crimson
-    ax.plot(
+    # Mean — crimson filled
+    ax2.plot(
         d, t_mean,
-        marker=marker, markersize=20, linestyle="None",
+        marker=marker, markersize=22, linestyle="None",
         color="crimson", markeredgecolor="black", markeredgewidth=0.8,
-        label=f"{label} ({yr}) — mean {t_mean:.2f} °C",
+        zorder=5,
     )
 
-    # Median — open (white fill), navy edge
-    ax.plot(
+    # Median — darkorange filled
+    ax2.plot(
         d, t_med,
-        marker=marker, markersize=20, linestyle="None",
-        color="white", markeredgecolor="navy", markeredgewidth=1.8,
-        label=f"{label} ({yr}) — median {t_med:.2f} °C",
+        marker=marker, markersize=22, linestyle="None",
+        color="darkorange", markeredgecolor="black", markeredgewidth=0.8,
+        zorder=5,
     )
 
-    # Dotted connector between mean and median
-    ax.plot(
+    # Dotted connector
+    ax2.plot(
         [d, d], [t_mean, t_med],
-        color="grey", linewidth=1, linestyle=":",
+        color="grey", linewidth=1.2, linestyle=":",
+        zorder=4,
     )
 
-    ax.set_xlabel("Day of Year")
-    ax.set_ylabel("Temperature [°C]")
-    ax.set_title(
-        f"Interannual Temperature Variability at ({latitude:.2f}, {longitude:.2f})"
+    # Direct annotations instead of a legend
+    offset = (t_mean - t_med) * 0.15  # tiny nudge so labels don't overlap
+    ax2.annotate(
+        f"mean {t_mean:.2f} °C",
+        xy=(d, t_mean), xytext=(d + 4, t_mean + abs(offset) + 0.05),
+        fontsize=8, color="crimson", fontweight="bold",
+        arrowprops=dict(arrowstyle="-", color="crimson", lw=0.8),
     )
-    ax.legend(title="Year / Logger", bbox_to_anchor=(1.01, 1), loc="upper left",
-              fontsize=7)
-    ax.grid(True, alpha=0.3)
+    ax2.annotate(
+        f"median {t_med:.2f} °C",
+        xy=(d, t_med), xytext=(d + 4, t_med - abs(offset) - 0.25),
+        fontsize=8, color="darkorange", fontweight="bold",
+        arrowprops=dict(arrowstyle="-", color="darkorange", lw=0.8),
+    )
+
+    ax2.set_xlabel("Day of Year")
+    ax2.set_ylabel("Temperature [°C]")
+    ax2.set_title(
+        f"Interannual Variability at ({latitude:.2f}, {longitude:.2f})"
+    )
+    ax2.grid(True, alpha=0.3)
+
     fig.tight_layout()
     return fig
 
@@ -265,6 +283,7 @@ def plot_doy_all(
     latitude: float,
     longitude: float,
 ) -> plt.Figure:
+    
     """
     Plot 3 (summary) – CORA interannual DOY scatter +
     ALL logger markers: mean (filled) and median (open).
@@ -433,33 +452,15 @@ if "logger_dfs" in st.session_state:
         col_b.metric("Median temperature", f"{sdata['temperature'].median():.2f} °C")
         col_c.metric("Std deviation",       f"{sdata['temperature'].std():.2f} °C")
 
-        # Plot 1 – time series
-        fig1 = plot_temperature_series(sdata)
-        st.pyplot(fig1)
-        plt.close(fig1)
-
-        # Plot 2 – DOY vs CORA (this file only, mean + median markers)
-        fig2 = plot_doy_single(cora_df, sdata, latitude, longitude)
-        st.pyplot(fig2)
-        plt.close(fig2)
+        # Combined figure: time-series (left) + DOY vs CORA (right)
+        fig12 = plot_series_and_doy(sdata, cora_df, latitude, longitude)
+        st.pyplot(fig12)
+        plt.close(fig12)
 
         st.divider()
 
     # ── Summary section ───────────────────────────────────────────────────────
     st.header("📊 Summary — All Loggers vs CORA")
-
-    rows = []
-    for fname, sdata in logger_dfs.items():
-        rows.append({
-            "File":        fname,
-            "Name":        sdata["custom_name"].iloc[0],
-            "Month":       sdata["time"].iloc[0].strftime("%B %Y"),
-            "Mean (°C)":   round(sdata["temperature"].mean(),   2),
-            "Median (°C)": round(sdata["temperature"].median(), 2),
-            "Std (°C)":    round(sdata["temperature"].std(),    2),
-            "N samples":   len(sdata),
-        })
-    st.dataframe(pd.DataFrame(rows), use_container_width=True)
 
     # Plot 3 – DOY vs CORA (all loggers)
     fig3 = plot_doy_all(cora_df, logger_dfs, latitude, longitude)
@@ -470,5 +471,20 @@ if "logger_dfs" in st.session_state:
         "⭐ stars = 2025  |  ▲ triangles = 2026  |  ■ squares = 2027  |  ● circles = other  \n"
         "**Filled marker** = mean  ·  **Open marker** = median"
     )
+
+    st.divider()
+    rows = []
+    for fname, sdata in logger_dfs.items():
+        rows.append({
+            "File":        fname,
+            "Month":       sdata["time"].iloc[0].strftime("%B %Y"),
+            "Mean (°C)":   round(sdata["temperature"].mean(),   2),
+            "Median (°C)": round(sdata["temperature"].median(), 2),
+            "Std (°C)":    round(sdata["temperature"].std(),    2),
+            "N samples":   len(sdata),
+        })
+    st.dataframe(pd.DataFrame(rows), use_container_width=True)
+
+   
 
     cs_mach1_footer()
