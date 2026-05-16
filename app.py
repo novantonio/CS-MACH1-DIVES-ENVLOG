@@ -177,24 +177,43 @@ def plot_series_and_doy(
     longitude: float,
 ) -> plt.Figure:
     """
-    Combined 1-row × 2-column figure per logger file:
-      Left  (ax1) – Temperature time-series (raw + rolling mean)
-      Right (ax2) – CORA interannual DOY scatter + mean & median markers
-                    (no legend on ax2; markers annotated directly)
+    2-row × 2-column figure per logger file:
 
-    Mean marker  : crimson  (filled)
-    Median marker: darkorange (filled)
+      [0,0] ax1 – Temperature time-series (raw + rolling mean + mean/median h-lines)
+      [0,1] ax2 – CORA monthly mean ± std + logger mean & median markers
+      [1,0] ax3 – DOY vs CORA interannual scatter + MEAN marker only (crimson)
+      [1,1] ax4 – DOY vs CORA interannual scatter + MEDIAN marker only (darkorange)
+
+    Colour convention (consistent across all panels):
+      crimson    = mean
+      darkorange = median
     """
-    fig, (ax1, ax2) = plt.subplots(
-        1, 2,
-        figsize=(18, 5),
-        gridspec_kw={"width_ratios": [1, 1.4]},
+    fig, axes = plt.subplots(
+        2, 2,
+        figsize=(18, 10),
+        gridspec_kw={"hspace": 0.38, "wspace": 0.28},
     )
+    ax1, ax2 = axes[0, 0], axes[0, 1]
+    ax3, ax4 = axes[1, 0], axes[1, 1]
 
     label  = sdata["custom_name"].iloc[0]
     yr     = sdata["time"].iloc[0].year
+    t_mean = sdata["temperature"].mean()
+    t_med  = sdata["temperature"].median()
+    marker = _year_marker(yr)
+    m_month = sdata["time"].iloc[0].month
+    d_doy   = sdata["time"].iloc[0].timetuple().tm_yday
 
-    # ── LEFT: time-series ─────────────────────────────────────────────────────
+    # Pre-compute CORA monthly stats (shared by ax2)
+    cora_m = cora_df.copy()
+    cora_m["month"] = cora_m["time"].dt.month
+    cora_monthly = cora_m.groupby("month")["TEMP"].agg(["mean", "std"]).reset_index()
+
+    # Pre-compute CORA DOY data (shared by ax3 & ax4)
+    years   = sorted(cora_df["time"].dt.year.unique())
+    colours = cm.tab20(np.linspace(0, 1, len(years)))
+
+    # ── [0,0] Time-series ─────────────────────────────────────────────────────
     ax1.plot(
         sdata["time"], sdata["temperature"],
         alpha=0.4, linewidth=0.8,
@@ -205,10 +224,6 @@ def plot_series_and_doy(
             sdata["time"], sdata["temperature_rolling_mean"],
             linewidth=2, color="tomato", label="Rolling mean",
         )
-
-    t_mean = sdata["temperature"].mean()
-    t_med  = sdata["temperature"].median()
-
     ax1.axhline(
         t_mean, color="crimson", linewidth=1.4, linestyle="--",
         label=f"Mean {t_mean:.2f} °C",
@@ -217,7 +232,6 @@ def plot_series_and_doy(
         t_med, color="darkorange", linewidth=1.4, linestyle="--",
         label=f"Median {t_med:.2f} °C",
     )
-
     ax1.legend(fontsize=8)
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Temperature (°C)")
@@ -225,66 +239,89 @@ def plot_series_and_doy(
     ax1.grid(True, alpha=0.3)
     ax1.tick_params(axis="x", rotation=25)
 
-    # ── RIGHT: DOY vs CORA ────────────────────────────────────────────────────
-    years   = sorted(cora_df["time"].dt.year.unique())
-    colours = cm.tab20(np.linspace(0, 1, len(years)))
-
-    for colour, (year, year_data) in zip(colours, cora_df.groupby(cora_df["time"].dt.year)):
-        doy = year_data["time"].dt.dayofyear
-        ax2.plot(doy, year_data["TEMP"],
-                 marker=".", markersize=4, linestyle="--",
-                 color=colour, alpha=0.6)
-
-    d      = sdata["time"].iloc[0].timetuple().tm_yday
-    t_mean = sdata["temperature"].mean()
-    t_med  = sdata["temperature"].median()
-    marker = _year_marker(yr)
-
-    # Mean — crimson filled
+    # ── [0,1] CORA monthly mean ± std + logger mean & median ──────────────────
+    ax2.scatter(
+        cora_monthly["month"], cora_monthly["mean"],
+        color="steelblue", zorder=3, label="CORA monthly mean",
+    )
+    ax2.errorbar(
+        cora_monthly["month"], cora_monthly["mean"],
+        yerr=cora_monthly["std"],
+        fmt="o", color="steelblue", capsize=3, alpha=0.5,
+        label="± std",
+    )
     ax2.plot(
-        d, t_mean,
+        m_month, t_mean,
+        marker=marker, markersize=18, linestyle="None",
+        color="crimson", markeredgecolor="black", markeredgewidth=0.8,
+        zorder=5, label=f"{label} mean {t_mean:.2f} °C",
+    )
+    ax2.plot(
+        m_month, t_med,
+        marker=marker, markersize=18, linestyle="None",
+        color="darkorange", markeredgecolor="black", markeredgewidth=0.8,
+        zorder=5, label=f"{label} median {t_med:.2f} °C",
+    )
+    ax2.plot(
+        [m_month, m_month], [t_mean, t_med],
+        color="grey", linewidth=1.2, linestyle=":", zorder=4,
+    )
+    ax2.set_xticks(range(1, 13))
+    ax2.set_xticklabels(MONTH_LABELS, fontsize=8)
+    ax2.set_xlabel("Month")
+    ax2.set_ylabel("Temperature [°C]")
+    ax2.set_title("CORA Monthly Mean ± Std vs Logger")
+    ax2.legend(fontsize=8)
+    ax2.grid(True, alpha=0.3)
+
+    # ── helper: draw CORA DOY background on an axis ───────────────────────────
+    def _draw_cora_doy(ax):
+        for colour, (year, year_data) in zip(colours, cora_df.groupby(cora_df["time"].dt.year)):
+            doy = year_data["time"].dt.dayofyear
+            ax.plot(doy, year_data["TEMP"],
+                    marker=".", markersize=4, linestyle="--",
+                    color=colour, alpha=0.6)
+        ax.set_xlabel("Day of Year")
+        ax.set_ylabel("Temperature [°C]")
+        ax.grid(True, alpha=0.3)
+
+    # ── [1,0] DOY vs CORA — MEAN marker (crimson) ─────────────────────────────
+    _draw_cora_doy(ax3)
+    ax3.plot(
+        d_doy, t_mean,
         marker=marker, markersize=22, linestyle="None",
         color="crimson", markeredgecolor="black", markeredgewidth=0.8,
-        zorder=5,
+        zorder=5, label=f"mean {t_mean:.2f} °C",
     )
-
-    # Median — darkorange filled
-    ax2.plot(
-        d, t_med,
-        marker=marker, markersize=22, linestyle="None",
-        color="darkorange", markeredgecolor="black", markeredgewidth=0.8,
-        zorder=5,
-    )
-
-    # Dotted connector
-    ax2.plot(
-        [d, d], [t_mean, t_med],
-        color="grey", linewidth=1.2, linestyle=":",
-        zorder=4,
-    )
-
-    # Direct annotations instead of a legend
-    offset = (t_mean - t_med) * 0.15  # tiny nudge so labels don't overlap
-    ax2.annotate(
+    ax3.annotate(
         f"mean {t_mean:.2f} °C",
-        xy=(d, t_mean), xytext=(d + 4, t_mean + abs(offset) + 0.05),
+        xy=(d_doy, t_mean), xytext=(d_doy + 4, t_mean + 0.3),
         fontsize=8, color="crimson", fontweight="bold",
         arrowprops=dict(arrowstyle="-", color="crimson", lw=0.8),
     )
-    ax2.annotate(
+    ax3.set_title(
+        f"DOY — Mean marker  |  ({latitude:.2f}, {longitude:.2f})"
+    )
+
+    # ── [1,1] DOY vs CORA — MEDIAN marker (darkorange) ────────────────────────
+    _draw_cora_doy(ax4)
+    ax4.plot(
+        d_doy, t_med,
+        marker=marker, markersize=22, linestyle="None",
+        color="darkorange", markeredgecolor="black", markeredgewidth=0.8,
+        zorder=5, label=f"median {t_med:.2f} °C",
+    )
+    ax4.annotate(
         f"median {t_med:.2f} °C",
-        xy=(d, t_med), xytext=(d + 4, t_med - abs(offset) - 0.25),
+        xy=(d_doy, t_med), xytext=(d_doy + 4, t_med - 0.4),
         fontsize=8, color="darkorange", fontweight="bold",
         arrowprops=dict(arrowstyle="-", color="darkorange", lw=0.8),
     )
-
-    ax2.set_xlabel("Day of Year")
-    ax2.set_ylabel("Temperature [°C]")
-    ax2.set_title(
-        f"Interannual Variability at ({latitude:.2f}, {longitude:.2f})"
+    ax4.set_title(
+        f"DOY — Median marker  |  ({latitude:.2f}, {longitude:.2f})"
     )
-    ax2.grid(True, alpha=0.3)
 
+    fig.suptitle(f"{label} ({yr})", fontsize=13, fontweight="bold", y=1.01)
     fig.tight_layout()
     return fig
 
