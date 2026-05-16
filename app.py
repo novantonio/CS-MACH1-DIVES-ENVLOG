@@ -368,7 +368,7 @@ def plot_doy_all(
         # Median — open, same colour edge
         ax.plot(
             d, t_med,
-            marker=marker, markersize=18, linestyle="None",
+            marker=marker, markersize=8, linestyle="None",
             color="white", markeredgecolor=sc, markeredgewidth=2,
             label=f"{label} ({yr}) median",
         )
@@ -383,8 +383,7 @@ def plot_doy_all(
         f"Interannual Temperature Variability at ({latitude:.2f}, {longitude:.2f})\n"
         "— All loggers — filled = mean  ·  open = median —"
     )
-    ax.legend(title="Year / Logger", bbox_to_anchor=(1.01, 1), loc="upper left",
-              fontsize=7)
+    #ax.legend(title="Year / Logger", bbox_to_anchor=(1.01, 1), loc="upper left",fontsize=7)
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     return fig
