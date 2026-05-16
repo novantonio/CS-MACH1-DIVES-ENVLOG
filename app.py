@@ -388,6 +388,113 @@ def plot_doy_all(
     fig.tight_layout()
     return fig
 
+def plot_doy_all_mean(
+    cora_df: pd.DataFrame,
+    logger_dfs: dict[str, pd.DataFrame],
+    latitude: float,
+    longitude: float,
+) -> plt.Figure:
+    """
+    Plot 4 (summary) – CORA interannual DOY scatter +
+    ALL logger markers: mean (filled) and median (open).
+    """
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    cora_temp_data = cora_df.copy()
+    cora_temp_data["month"] = cora_temp_data["time"].dt.month
+    cora_monthly_stats = (
+        cora_temp_data
+        .groupby("month")["TEMP"]
+        .agg(["mean", "std"])
+        .reset_index()
+    )
+
+    # CORA monthly mean
+    ax.scatter(
+        cora_monthly_stats["month"],
+        cora_monthly_stats["mean"],
+        label="Monthly Mean Temperature",
+    )
+
+    # CORA std
+    ax.errorbar(
+        cora_monthly_stats["month"],
+        cora_monthly_stats["mean"],
+        yerr=cora_monthly_stats["std"],
+        fmt="o",
+        capsize=3,
+        label="Monthly Standard Deviation",
+    )
+
+    # Logger markers
+  
+
+    star_colours = cm.Set1(np.linspace(0, 1, max(len(logger_dfs), 1)))
+
+    for (fname, sdata), sc in zip(logger_dfs.items(), star_colours):
+        month = sdata["time"].iloc[0].month
+        tavg = sdata["temperature"].mean()
+        tavg2 = sdata["temperature"].median()
+        label = sdata["custom_name"].iloc[0]
+        year = sdata["time"].iloc[0].year
+
+        marker = _year_marker(year)
+
+        for (fname, sdata), sc in zip(logger_dfs.items(), star_colours):
+
+        month = sdata["time"].iloc[0].month
+        tavg = sdata["temperature"].mean()
+        label = sdata["custom_name"].iloc[0]
+        year = sdata["time"].iloc[0].year
+
+        marker = _year_marker(year)
+
+        ax.plot(
+            month,
+            tavg,
+            marker=marker,
+            markersize=8,
+            linestyle="None",
+            color=sc,
+            markeredgecolor="black",
+            markeredgewidth=0.8,
+            label=f"{label} ({year})",
+        )
+        
+        ax.plot(
+            month,
+            tavg2,
+            marker=marker,
+            markersize=8,
+            linestyle="None",
+            color=sc,
+            markeredgecolor="black",
+            markeredgewidth=0.8,
+            label=f"{label} ({year})",
+        )
+
+    # Formatting
+    ax.set_xticks(range(1, 13))
+
+    ax.set_xticklabels([
+        "Jan", "Feb", "Mar", "Apr",
+        "May", "Jun", "Jul", "Aug",
+        "Sep", "Oct", "Nov", "Dec"
+    ])
+
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Temperature [°C]")
+
+    ax.set_title(
+        "CORA vs Multiple Logger Monthly Temperature"
+    )
+
+    ax.grid(True, alpha=0.3)
+
+    # ax1.legend()
+
+    fig.tight_layout()
+    return fig
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
@@ -526,10 +633,20 @@ if "logger_dfs" in st.session_state:
     fig3 = plot_doy_all(cora_df, logger_dfs, latitude, longitude)
     st.pyplot(fig3)
     plt.close(fig3)
-
+    st.divider()
+    
+    # Plot 3 – DOY vs CORA (all loggers)
+    fig4 = plot_doy_all_mean(cora_df, logger_dfs, latitude, longitude)
+    st.pyplot(fig4)
+    plt.close(fig4)
+    
     st.info(
         "⭐ stars = 2025  |  ▲ triangles = 2026  |  ■ squares = 2027  |  ● circles = other  \n"
         "**Filled marker** = mean  ·  **Open marker** = median"
     )
+    
+    st.divider()
+  
+  
 
     cs_mach1_footer()
