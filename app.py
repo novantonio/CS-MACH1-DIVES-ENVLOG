@@ -43,6 +43,7 @@ apply_cs_mach1_theme(
 DEFAULT_LATITUDE  = 44.376290
 DEFAULT_LONGITUDE = 9.071358
 TMAX              = 32
+MARKERSIZE        = 15
 
 CORA_URL_TEMPLATE = (
     "https://erddap.emodnet-physics.eu/erddap/griddap/"
@@ -290,11 +291,11 @@ def plot_series_and_doy(
                  yerr=cora_monthly["std"],
                  fmt="o", color="steelblue", capsize=3, alpha=0.5, label="± std")
     ax2.plot(m_month, t_mean,
-             marker=marker, markersize=12, linestyle="None",
+             marker=marker, markersize=MARKERSIZE, linestyle="None",
              color="crimson", markeredgecolor="black", markeredgewidth=0.8,
              zorder=5, label=f"{label} mean {t_mean:.2f} °C")
     ax2.plot(m_month, t_med,
-             marker=marker, markersize=12, linestyle="None",
+             marker='x', markersize=MARKERSIZE, linestyle="None",
              color="darkorange", markeredgecolor="black", markeredgewidth=0.8,
              zorder=5, label=f"{label} median {t_med:.2f} °C")
     ax2.plot([m_month, m_month], [t_mean, t_med],
@@ -323,7 +324,7 @@ def plot_series_and_doy(
     # ── [1,0] DOY — MEAN marker (crimson) ─────────────────────────────────────
     _draw_cora_doy(ax3)
     ax3.plot(d_doy, t_mean,
-             marker=marker, markersize=22, linestyle="None",
+             marker=marker, markersize=MARKERSIZE, linestyle="None",
              color="crimson", markeredgecolor="black", markeredgewidth=0.8, zorder=5)
     ax3.annotate(f"mean {t_mean:.2f} °C",
                  xy=(d_doy, t_mean), xytext=(d_doy + 4, t_mean + 0.3),
@@ -334,7 +335,7 @@ def plot_series_and_doy(
     # ── [1,1] DOY — MEDIAN marker (darkorange) ────────────────────────────────
     _draw_cora_doy(ax4)
     ax4.plot(d_doy, t_med,
-             marker=marker, markersize=22, linestyle="None",
+             marker='x', markersize=MARKERSIZE, linestyle="None",
              color="darkorange", markeredgecolor="black", markeredgewidth=0.8, zorder=5)
     ax4.annotate(f"median {t_med:.2f} °C",
                  xy=(d_doy, t_med), xytext=(d_doy + 4, t_med - 0.4),
