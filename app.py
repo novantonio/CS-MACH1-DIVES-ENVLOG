@@ -309,7 +309,7 @@ def plot_series_and_doy(
     ax1.legend(fontsize=8)
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Temperature (°C)")
-    ax1.set_ylim(top=TMAX)
+    #ax1.set_ylim(top=TMAX)
     ax1.set_title(f"Time Series — {label} ({yr})")
     ax1.grid(True, alpha=0.3)
     ax1.tick_params(axis="x", rotation=25)
