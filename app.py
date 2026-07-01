@@ -2,22 +2,9 @@
 app.py
 ------
 CS-MACH1 EnvLogger pipeline — Streamlit Cloud single-file app.
-
-Changes vs CS-MACH1-SCUBA/main:
-1. ax1 now shows BOTH the raw clean_df trace AND the rolling-mean proc_df trace.
-2. Moving the rolling-window slider immediately re-processes all files without
-   needing to press "Start Processing" again.
-3. clean_dfs stored separately in session_state so re-processing is free.
-4. plot_doy_all_mean: removed duplicated inner loop; mean vs median use
-   distinct colours (crimson / darkorange) and the correct variable (tavg2).
-5. plot_series_and_doy signature extended with clean_df parameter.
-6. Minor fixes: variable shadowing in loops, unused assignments removed.
-
-Bug fixes applied on top of v.20260630:
-B1. ax2 title f-string missing prefix (coordinates were not formatted).
-B2. CORA fetch failure: replaced st.error()+st.stop() with st.warning(),
-    cora_monthly_global = empty DataFrame, all plots guard cora_df is None.
-B3. WOD fetch failure already handled in v.20260630 (try/except → None).
+------
+change log: v.20260701
+partially developed with Claude.AI
 """
 
 from __future__ import annotations
