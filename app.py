@@ -632,6 +632,41 @@ def build_report_pdf(
     return buf.read()
 
 
+# ── CSS meta-card (small font, per-file) ─────────────────────────────────────
+st.markdown("""
+<style>
+.meta-card-small {
+    background:#f0f7ff; border-left:3px solid #1976d2;
+    border-radius:5px; padding:6px 10px; margin-bottom:6px;
+}
+.meta-label-small {
+    color:#1976d2; font-size:0.62rem; text-transform:uppercase;
+    letter-spacing:.05em; font-weight:600;
+}
+.meta-value-small { color:#1a2a3a; font-size:0.80rem; font-weight:500; margin-top:1px; }
+</style>
+""", unsafe_allow_html=True)
+
+
+# ── Map helper (scroll-locked, fallback to st.map) ────────────────────────────
+def render_locked_map(latitude: float, longitude: float, popup_label: str, key: str):
+    try:
+        import folium
+        from streamlit_folium import st_folium
+        m = folium.Map(
+            location=[latitude, longitude], zoom_start=12,
+            tiles="OpenStreetMap", scrollWheelZoom=False, dragging=True,
+        )
+        folium.CircleMarker(
+            [latitude, longitude], radius=8,
+            color="#1565c0", fill=True, fill_color="#1976d2", fill_opacity=0.75,
+            popup=folium.Popup(popup_label, max_width=220),
+        ).add_to(m)
+        st_folium(m, width=320, height=230, returned_objects=[], key=key)
+    except ImportError:
+        st.map(pd.DataFrame({"lat": [latitude], "lon": [longitude]}))
+
+
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### ⚙️ Settings")
@@ -750,10 +785,49 @@ if "logger_dfs" in st.session_state:
     # ── Per-file ──────────────────────────────────────────────────────────────
     for fname, proc_df in logger_dfs.items():
         st.subheader(f"📄 {fname}")
+
+        # ── Metadata card + minimap ───────────────────────────────────────────
+        _uf = next(f for f in st.session_state["uploaded_files"] if f.name == fname)
+        _uf.seek(0)
+        meta = extract_metadata(pd.read_csv(_uf))
+        _uf.seek(0)
+        t0       = proc_df["time"].iloc[0].strftime("%Y-%m-%dT%H:%M:%S UTC")
+        file_lat = float(proc_df["latitude"].iloc[0])
+        file_lon = float(proc_df["longitude"].iloc[0])
+
+        col_meta, col_map = st.columns([2, 1])
+        with col_meta:
+            cards = [
+                ("Sensor serial",     str(meta.serial)),
+                ("Sensor name",       str(meta.custom_name)),
+                ("Sampling freq.",    str(meta.sampling_frequency)),
+                ("Recording start",   t0),
+                ("Coordinates",       f"{file_lat:.6f}° N, {file_lon:.6f}° E"),
+                ("Total records",     f"{len(proc_df):,}"),
+            ]
+            c1, c2 = st.columns(2)
+            for j, (lbl, val) in enumerate(cards):
+                with (c1 if j % 2 == 0 else c2):
+                    st.markdown(
+                        f"<div class='meta-card-small'>"
+                        f"<div class='meta-label-small'>{lbl}</div>"
+                        f"<div class='meta-value-small'>{val}</div>"
+                        f"</div>", unsafe_allow_html=True,
+                    )
+        with col_map:
+            render_locked_map(
+                file_lat, file_lon,
+                popup_label=f"<b>{meta.custom_name}</b><br>{t0}",
+                key=f"map_{fname}",
+            )
+
+        # ── Metrics ───────────────────────────────────────────────────────────
         col_a, col_b, col_c = st.columns(3)
         col_a.metric("Mean temperature",   f"{proc_df['temperature'].mean():.2f} °C")
         col_b.metric("Median temperature", f"{proc_df['temperature'].median():.2f} °C")
         col_c.metric("Std deviation",      f"{proc_df['temperature'].std():.2f} °C")
+
+        # ── 4 grafici ─────────────────────────────────────────────────────────
         fig_file = plot_series_and_doy(
             clean_dfs[fname], proc_df, cora_df, latitude, longitude,
         )
