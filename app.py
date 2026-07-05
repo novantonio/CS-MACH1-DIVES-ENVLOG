@@ -649,7 +649,7 @@ def render_locked_map(latitude: float, longitude: float, popup_label: str, key: 
             color="#1565c0", fill=True, fill_color="#1976d2", fill_opacity=0.75,
             popup=folium.Popup(popup_label, max_width=220),
         ).add_to(m)
-        st_folium(m, width=320, height=230, returned_objects=[], key=key)
+        st_folium(m, width=320, height=80, returned_objects=[], key=key)
     except ImportError:
         st.map(pd.DataFrame({"lat": [latitude], "lon": [longitude]}))
 
