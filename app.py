@@ -42,9 +42,9 @@ from cs_mach1_theme import apply_cs_mach1_theme, cs_mach1_footer
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 apply_cs_mach1_theme(
-    page_title="CS-MACH1 Sea Water Temperature data",
-    main_title="CS-MACH1: Sea Water Temperature data from envloggers analysis",
-    subtitle="in situ data comparison vs CORA - COriolis Ocean Dataset for Reanalysis",
+    page_title="CS-MACH1: Sea Surface Temperature analysis",
+    main_title="CS-MACH1: Sea Surface Temperature data from my envlogger",
+    subtitle="in situ data comparison vs CORA - COriolis Ocean Dataset for Reanalysis and WOD - World Ocean Database",
 )
 
 # ── Constants ─────────────────────────────────────────────────────────────────
