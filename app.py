@@ -182,28 +182,39 @@ def _get_wod_client():
 @st.cache_data(show_spinner="Downloading WOD data…")
 def get_ranges_from_wod(latitude: float, longitude: float) -> pd.DataFrame | None:
     try:
-        client  = _get_wod_client()
-        lat_min = round(latitude,  1) - 0.1
-        lat_max = round(latitude,  1) + 0.1
+        client = _get_wod_client()
+
+        lat_min = round(latitude, 1) - 0.1
+        lat_max = round(latitude, 1) + 0.1
         lon_min = round(longitude, 1) - 0.1
         lon_max = round(longitude, 1) + 0.1
+        
         qb = client.query()
+        
         qb.add_select_column("wod_unique_cast")
-        qb.add_select_column("Temperature",        alias="TEMPERATURE")
-        qb.add_select_column("Temperature_WODflag",alias="TEMPERATURE_QC")
-        qb.add_select_column("z",   alias="DEPTH")
-        qb.add_select_column("time",alias="TIME")
+        qb.add_select_column("Temperature", alias="TEMPERATURE")
+        qb.add_select_column("Temperature_WODflag", alias="TEMPERATURE_QC")
+        qb.add_select_column("z", alias="DEPTH")
+        qb.add_select_column("time", alias="TIME")
         qb.add_select_column("lon", alias="LONGITUDE")
         qb.add_select_column("lat", alias="LATITUDE")
-        qb.add_range_filter("TIME",        "1970-01-01T00:00:00", "2023-01-01T00:00:00")
-        qb.add_is_not_null_filter("TEMPERATURE")
-        qb.add_not_equals_filter("TEMPERATURE", -1e10)
-        qb.add_equals_filter("TEMPERATURE_QC", 0.0)
-        qb.add_range_filter("DEPTH",     0, 10_000)
-        qb.add_range_filter("LONGITUDE", lon_min, lon_max)
-        qb.add_range_filter("LATITUDE",  lat_min, lat_max)
+        
+        # Filtri: usare i nomi originali dei campi
+        qb.add_range_filter(
+            "time", "1970-01-01T00:00:00", "2023-01-01T00:00:00"
+        )
+        qb.add_is_not_null_filter("Temperature")
+        qb.add_not_equals_filter("Temperature", -1e10)
+        qb.add_equals_filter("Temperature_WODflag", 0.0)
+        qb.add_range_filter("z", 0, 10000)
+        qb.add_range_filter("lon", lon_min, lon_max)
+        qb.add_range_filter("lat", lat_min, lat_max)
+        
         df = qb.to_pandas_dataframe()
+        
+        # Normalizzare i nomi restituiti
         df = df.rename(columns={"TIME": "time", "TEMPERATURE": "TEMP"})
+        
         return df[["time", "TEMP"]]
     except Exception as exc:
         st.warning(f"Could not fetch WOD data: {exc}")
